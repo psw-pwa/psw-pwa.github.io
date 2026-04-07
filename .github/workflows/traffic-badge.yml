@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch unique visitors
+      - name: Fetch unique visitors (14-day window)
         run: |
           UNIQUES=$(curl -s \
             -H "Authorization: token ${{ secrets.TRAFFIC_PAT }}" \
