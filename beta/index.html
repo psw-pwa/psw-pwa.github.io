@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta data-testid="boot-phase" content="shell"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:7777; worker-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>psw-pwa</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--card:#F2F2F2;--card-hover:#e8e8e8;
+  --text:#000;--text2:#8E8E93;--text3:#aaa;
+  --red:#ff3b30;
+  --r:16px;
+  --safe-top:env(safe-area-inset-top,44px);
+  --safe-bottom:env(safe-area-inset-bottom,34px);
+}
+html{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--text);min-height:100dvh;max-width:430px;margin:0 auto;display:flex;flex-direction:column;justify-content:space-between}
+
+.top{padding:calc(var(--safe-top) + 48px) 24px 0;display:flex;flex-direction:column;align-items:center;gap:16px}
+.logo{width:64px;height:64px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center}
+.logo svg{width:28px;height:28px}
+.page-title{font-size:32px;font-weight:300;letter-spacing:-0.5px}
+.subtitle{font-size:15px;color:var(--text2)}
+
+.middle{padding:0 24px;display:flex;flex-direction:column;gap:10px}
+
+.card{background:var(--card);border-radius:var(--r);overflow:hidden}
+.card-row{display:flex;align-items:center;padding:16px;gap:12px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.card-row:active{background:var(--card-hover)}
+.row-label{font-size:16px;flex:1}
+.row-icon{width:20px;height:20px;color:var(--text2);flex-shrink:0}
+
+.divider-label{font-size:13px;color:var(--text2);padding:0 4px 4px}
+.sec-label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:0.3px;padding:0 4px 6px}
+
+.input-card{background:var(--card);border-radius:var(--r);padding:16px}
+.input-card input{width:100%;border:none;background:transparent;font-size:16px;color:var(--text);outline:none;letter-spacing:2px}
+.input-card input::placeholder{color:var(--text3);letter-spacing:0}
+
+.error-text{font-size:13px;color:var(--text2);text-align:center;padding:0 4px}
+.cooldown{font-size:13px;color:var(--text2);text-align:center;padding:0 4px;font-variant-numeric:tabular-nums}
+
+.recovery-note{font-size:13px;color:var(--text2);line-height:1.5;padding:0 4px}
+.recovery-card{background:var(--card);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
+.word-row{display:flex;align-items:center;gap:6px}
+.word-num{font-size:12px;color:var(--text3);width:18px;text-align:right;flex-shrink:0}
+.word-row input{border:none;background:transparent;font-size:14px;color:var(--text);outline:none;width:100%}
+
+.bottom{padding:0 24px calc(var(--safe-bottom) + 16px);display:flex;flex-direction:column;gap:8px}
+.btn{width:100%;padding:16px;background:var(--card);border:none;border-radius:var(--r);font-size:16px;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:center}
+.btn:active{background:var(--card-hover)}
+.btn.muted{color:var(--text2)}
+.btn:disabled{opacity:0.4;pointer-events:none}
+
+#vault-content{display:none}
+
+/* --- Credential list --- */
+.search-wrap{padding:20px 24px 8px}
+.search{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:var(--r);padding:10px 14px}
+.search svg{width:16px;height:16px;color:var(--text3);flex-shrink:0}
+.search input{border:none;background:transparent;font-size:16px;color:var(--text);width:100%;outline:none}
+.search input::placeholder{color:var(--text3)}
+
+.chips{display:flex;gap:6px;padding:4px 24px 12px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{border:none;background:transparent;padding:4px 12px;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;border-radius:20px;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.chip.active{background:var(--card);color:var(--text)}
+
+.cred-list{padding:0 24px;display:flex;flex-direction:column;gap:8px;flex:1}
+.cred-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border-radius:var(--r);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cred-row:active{background:var(--card-hover)}
+.cred-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cred-icon svg{width:20px;height:20px;color:var(--text2)}
+.cred-body{flex:1;min-width:0}
+.cred-name{font-size:15px;font-weight:500}
+.cred-sub{font-size:13px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cred-meta{font-size:13px;color:var(--text2);text-align:right;flex-shrink:0}
+
+.cred-row.locked .cred-name{color:var(--text2)}
+.cred-row.locked .cred-sub{color:var(--text3)}
+
+.empty{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;padding:60px 40px;text-align:center}
+.empty.show{display:flex}
+.empty-title{font-size:20px;font-weight:300}
+.empty-sub{font-size:14px;color:var(--text2);line-height:1.5}
+
+.bottom-area{padding:16px 24px calc(var(--safe-bottom) + 16px)}
+.actions{display:flex;gap:8px}
+.act-btn{flex:1;padding:14px;background:var(--card);border:none;border-radius:var(--r);font-size:15px;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:center}
+.act-btn:active{background:var(--card-hover)}
+
+/* --- Credential detail --- */
+.nav{padding:calc(var(--safe-top) + 8px) 16px 8px;display:flex;align-items:center;justify-content:space-between}
+.nav-btn{border:none;background:none;font-size:16px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:var(--r);-webkit-tap-highlight-color:transparent}
+.nav-btn:active{background:var(--card)}
+.nav-btn svg{width:18px;height:18px}
+
+.cred-hdr{display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 24px 32px}
+.cred-hdr-icon{width:64px;height:64px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center}
+.cred-hdr-icon svg{width:28px;height:28px;color:var(--text2)}
+.cred-hdr-name{font-size:24px;font-weight:300;letter-spacing:-0.3px}
+.cred-hdr-type{font-size:14px;color:var(--text2)}
+
+.totp-display{display:flex;flex-direction:column;align-items:center;gap:12px;padding:0 24px 24px}
+.totp-code{font-size:48px;font-weight:300;letter-spacing:6px;font-variant-numeric:tabular-nums}
+.totp-ring{width:36px;height:36px}
+.totp-ring circle{fill:none;stroke:var(--card);stroke-width:3}
+.totp-ring circle.prog{stroke:var(--text);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1s linear}
+.totp-timer{font-size:14px;color:var(--text2)}
+
+.section{padding:0 24px 16px}
+.row{display:flex;align-items:center;padding:14px 16px;gap:8px}
+.row+.row{margin-top:2px}
+.row-left{font-size:15px;color:var(--text2);flex-shrink:0;width:88px}
+.row-right{font-size:15px;color:var(--text);flex:1;text-align:right;word-break:break-all}
+.row-right.masked{letter-spacing:3px;font-size:13px;color:var(--text3)}
+.row-action{border:none;background:none;cursor:pointer;color:var(--text2);padding:4px;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;flex-shrink:0}
+.row-action:active{color:var(--text)}
+.row-action svg{width:16px;height:16px}
+
+.row input,.row textarea{flex:1;border:none;background:transparent;font-size:15px;color:var(--text);text-align:right;outline:none;font-family:inherit}
+.row textarea{resize:none;min-height:48px;line-height:1.4}
+.row input::placeholder,.row textarea::placeholder{color:var(--text3)}
+
+.type-picker{padding:0 24px;display:flex;flex-direction:column;gap:10px}
+.type-picker-label{font-size:13px;color:var(--text2);padding:8px 4px 4px}
+
+.btn-stack{padding:16px 24px calc(var(--safe-bottom) + 16px);display:flex;flex-direction:column;gap:8px;margin-top:auto}
+
+.panel{display:none}.panel.active{display:block}
+
+.dev-badge{position:fixed;top:8px;right:8px;font-size:11px;color:var(--text3);font-family:monospace;z-index:9999;display:flex;gap:8px}
+
+/* --- Settings screens --- */
+.settings-rows{display:flex;flex-direction:column;gap:2px}
+.settings-row{display:flex;align-items:center;padding:14px 16px;gap:12px;background:var(--card);border-radius:var(--r);-webkit-tap-highlight-color:transparent}
+.settings-row.tap{cursor:pointer}
+.settings-row.tap:active{background:var(--card-hover)}
+.settings-row .row-label{font-size:15px;flex:1}
+.settings-row .row-value{font-size:15px;color:var(--text2)}
+.chevron{width:16px;height:16px;color:var(--text3);flex-shrink:0}
+
+.mode-dot{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--text3);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.mode-dot.on{background:var(--text);border-color:var(--text)}
+.mode-dot.on::after{content:'';width:8px;height:8px;border-radius:50%;background:#fff}
+
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper-val{font-size:15px;font-variant-numeric:tabular-nums;min-width:40px;text-align:center}
+.stepper-btn{width:28px;height:28px;border-radius:50%;border:none;background:var(--bg);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+.stepper-btn:active{opacity:0.6}
+.stepper-btn:disabled{opacity:0.3;pointer-events:none}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:flex-end;justify-content:center;z-index:100}
+.modal{background:var(--bg);border-radius:24px 24px 0 0;padding:20px 24px calc(var(--safe-bottom) + 24px);width:100%;max-width:430px;display:flex;flex-direction:column;gap:14px}
+.modal-handle{width:36px;height:4px;background:var(--card);border-radius:2px;margin:0 auto -4px}
+.modal-title{font-size:20px;font-weight:400;text-align:center}
+.modal-body{font-size:14px;color:var(--text2);text-align:center;line-height:1.5}
+.modal-seed{background:var(--card);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px 20px}
+.modal-seed span{font-size:14px;color:var(--text2)}
+.modal-btn{width:100%;padding:14px;background:var(--card);border:none;border-radius:var(--r);font-size:16px;color:var(--text);cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent}
+.modal-btn:active{background:var(--card-hover)}
+
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:flex-end;justify-content:center;z-index:100}
+.sheet{background:var(--bg);border-radius:24px 24px 0 0;padding:20px 24px calc(var(--safe-bottom) + 24px);width:100%;max-width:430px;display:flex;flex-direction:column;gap:10px}
+.sheet-handle{width:36px;height:4px;background:var(--card);border-radius:2px;margin:0 auto -2px}
+.sheet-title{font-size:20px;font-weight:400;text-align:center}
+.sheet-sub{font-size:14px;color:var(--text2);text-align:center;line-height:1.5}
+
+.settings-footer{padding:16px 24px calc(var(--safe-bottom) + 24px);margin-top:auto;display:flex;flex-direction:column;gap:6px}
+.version{font-size:13px;color:var(--text3);padding:0 4px 8px}
+.settings-content{padding:16px 24px;display:flex;flex-direction:column;gap:24px;flex:1}
+.settings-nav{padding:calc(var(--safe-top) + 8px) 16px 8px;display:flex;align-items:center}
+.settings-nav .nav-title{flex:1;text-align:center;font-size:17px}
+</style>
+  <script type="module" crossorigin src="/beta/assets/main-DdRAes91.js"></script>
+  <link rel="stylesheet" crossorigin href="/beta/assets/main-DCS2hVl1.css">
+</head>
+<body>
+
+<!-- Onboarding (shown on first launch) -->
+<div id="screen-onboarding" style="display:none"></div>
+
+<!-- Lock screen (visible by default) -->
+<div id="lock-screen" style="display:none">
+  <div class="top">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div class="page-title">Vault</div>
+    <div class="subtitle">Locked</div>
+  </div>
+
+  <div class="middle">
+    <div class="card" id="biometricRow" style="display:none">
+      <div class="card-row" id="face-id-btn" data-testid="passkey-btn">
+        <svg class="row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        <span class="row-label">Unlock with Face ID</span>
+        <svg class="row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <div class="divider-label" id="pw-divider" style="display:none">or enter password</div>
+
+    <div class="input-card" id="pw-card">
+      <input id="pw" data-testid="password-input" type="password" placeholder="Master password" autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+    </div>
+
+    <p class="error-text" id="err" data-testid="unlock-error" style="display:none"></p>
+    <p class="cooldown" id="cooldown" data-testid="lockout-timer" style="display:none"></p>
+  </div>
+
+  <div class="bottom">
+    <button class="btn" id="unlock-btn" data-testid="unlock-submit">Unlock</button>
+    <button class="btn muted" id="recovery-btn">Use recovery key</button>
+  </div>
+</div>
+
+<!-- Recovery view -->
+<div id="recoveryView" style="display:none;flex-direction:column;justify-content:space-between;min-height:100dvh">
+  <div class="top" style="align-items:flex-start;gap:8px">
+    <div class="page-title" style="font-size:24px">Recovery Key</div>
+    <p class="recovery-note">Type your recovery key. The clipboard will be cleared after entry.</p>
+  </div>
+
+  <div class="middle" style="margin-top:32px">
+    <div class="recovery-card" id="wordGrid" data-testid="recovery-key-input"></div>
+    <p class="error-text" id="recErr" style="display:none">Key not recognised</p>
+  </div>
+
+  <div class="bottom">
+    <button class="btn" id="recUnlockBtn">Unlock</button>
+    <button class="btn muted" id="recCancelBtn">Cancel</button>
+  </div>
+</div>
+
+<!-- PRF Recovery view (24-word, passkey fallback) -->
+<div id="prfRecoveryView" style="display:none;flex-direction:column;justify-content:space-between;min-height:100dvh">
+  <div class="top" style="align-items:flex-start;gap:8px">
+    <div class="page-title" style="font-size:24px">PRF Recovery Key</div>
+    <p class="recovery-note">Type your 24-word PRF recovery phrase.</p>
+  </div>
+
+  <div class="middle" style="margin-top:32px">
+    <div class="recovery-card" id="prfWordGrid" data-testid="prf-recovery-input"></div>
+    <p class="error-text" id="prfRecErr" style="display:none">Key not recognised</p>
+  </div>
+
+  <div class="bottom">
+    <button class="btn" id="prfRecUnlockBtn">Unlock</button>
+    <button class="btn muted" id="prfRecCancelBtn">Cancel</button>
+  </div>
+</div>
+
+<!-- Error screen -->
+<div id="screen-error" style="display:none"></div>
+
+<!-- Vault list (shown only when unlocked) -->
+<div id="vault-content" style="display:none">
+
+  <div class="top" style="padding:calc(var(--safe-top) + 16px) 24px 0;gap:8px">
+    <div class="logo" style="width:48px;height:48px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <div class="page-title">Vault</div>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="q" placeholder="Search" autocomplete="off" spellcheck="false"/>
+    </div>
+  </div>
+
+  <div class="chips">
+    <button class="chip active" data-f="all">All</button>
+    <button class="chip" data-f="password">Passwords</button>
+    <button class="chip" data-f="totp">TOTP</button>
+    <button class="chip" data-f="passkey">Passkeys</button>
+  </div>
+
+  <div class="cred-list" id="list"></div>
+
+  <div class="empty" id="empty">
+    <div class="empty-title">No passwords yet</div>
+    <div class="empty-sub">Add your first password, passkey,<br>or TOTP code to get started.</div>
+  </div>
+
+  <div class="bottom-area">
+    <div class="actions">
+      <button class="act-btn" id="addBtn">Add</button>
+      <button class="act-btn" id="settingsBtn">Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- Credential detail (shown when viewing/editing a single entry) -->
+<div id="screen-vault-detail" style="display:none;flex-direction:column;min-height:100dvh">
+
+  <div class="nav">
+    <button class="nav-btn" id="detailBackBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span id="backLabel">Back</span>
+    </button>
+    <button class="nav-btn" id="editBtn">Edit</button>
+  </div>
+
+  <div class="cred-hdr">
+    <div class="cred-hdr-icon" id="hdrIcon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    </div>
+    <div class="cred-hdr-name" id="hdrName">New Credential</div>
+    <div class="cred-hdr-type" id="hdrType">Password</div>
+  </div>
+
+  <!-- type selector -->
+  <div id="newPanel" class="panel">
+    <div class="type-picker">
+      <div class="type-picker-label">Type</div>
+      <div class="card">
+        <div class="row type-pick-row" data-new-type="password" style="cursor:pointer;-webkit-tap-highlight-color:transparent">
+          <span style="font-size:15px;flex:1">Password</span>
+          <svg style="width:16px;height:16px;color:var(--text2)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="row type-pick-row" data-new-type="totp" style="cursor:pointer;-webkit-tap-highlight-color:transparent">
+          <span style="font-size:15px;flex:1">TOTP</span>
+          <svg style="width:16px;height:16px;color:var(--text2)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="row type-pick-row" data-new-type="passkey" style="cursor:pointer;-webkit-tap-highlight-color:transparent;opacity:0.4">
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:15px">Passkey</span>
+            <span style="font-size:12px;color:var(--text2)">Passkeys are created by your device automatically — not manually</span>
+          </div>
+          <svg style="width:16px;height:16px;color:var(--text2)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASSWORD -->
+  <div id="passwordPanel" class="panel">
+    <div class="section">
+      <div class="card">
+        <div class="row"><span class="row-left">Name</span><span class="row-right view-field" data-field="name"></span><input class="edit-field" data-field="name" type="text" placeholder="Name" style="display:none"/></div>
+        <div class="row"><span class="row-left">Username</span><span class="row-right view-field" data-field="username"></span><input class="edit-field" data-field="username" type="email" placeholder="Username" style="display:none"/><button class="row-action copy-btn view-only" data-copy="username"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
+        <div class="row"><span class="row-left">Password</span><span class="row-right masked view-field" id="pwVal" data-field="password">············</span><input class="edit-field" data-field="password" type="text" placeholder="Password" style="display:none"/><button class="row-action view-only" id="togglePwBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+        <div class="row"><span class="row-left">Website</span><span class="row-right view-field" data-field="domain"></span><input class="edit-field" data-field="domain" type="url" placeholder="domain.com" style="display:none"/></div>
+        <div class="row" style="align-items:flex-start"><span class="row-left" style="padding-top:2px">Notes</span><span class="row-right view-field" data-field="notes" style="color:var(--text3)">—</span><textarea class="edit-field" data-field="notes" placeholder="Notes" style="display:none"></textarea></div>
+      </div>
+    </div>
+    <div class="btn-stack">
+      <button class="btn copy-btn view-only" data-copy="username">Copy Username</button>
+      <button class="btn copy-btn view-only" data-copy="password">Copy Password</button>
+      <button class="btn edit-only" id="savePwBtn" style="display:none">Save</button>
+      <button class="btn muted" id="delPwBtn">Delete Password</button>
+    </div>
+  </div>
+
+  <!-- TOTP -->
+  <div id="totpPanel" class="panel">
+    <div class="totp-display">
+      <svg class="totp-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9"/><circle class="prog" id="totpRing" cx="18" cy="18" r="15.9" stroke-dasharray="100" stroke-dashoffset="0"/></svg>
+      <div class="totp-code" id="totpCode">000 000</div>
+      <div class="totp-timer" id="totpTimer">30s</div>
+    </div>
+    <div class="section">
+      <div class="card">
+        <div class="row"><span class="row-left">Issuer</span><span class="row-right view-field" data-field="issuer" id="totpIssuer"></span><input class="edit-field" data-field="issuer" type="text" placeholder="Issuer" style="display:none"/></div>
+        <div class="row"><span class="row-left">Account</span><span class="row-right view-field" data-field="account"></span><input class="edit-field" data-field="account" type="email" placeholder="Account" style="display:none"/></div>
+        <div class="row"><span class="row-left">Secret</span><span class="row-right masked view-field" data-field="secret">············</span><input class="edit-field" data-field="secret" type="text" placeholder="Base32 secret" style="display:none"/></div>
+        <div class="row"><span class="row-left">Period</span><span class="row-right" style="color:var(--text2)">30s</span></div>
+      </div>
+    </div>
+    <div class="btn-stack">
+      <button class="btn view-only" id="copyCodeBtn">Copy Code</button>
+      <button class="btn edit-only" id="saveTotpBtn" style="display:none">Save</button>
+      <button class="btn muted" id="delTotpBtn">Delete TOTP</button>
+    </div>
+  </div>
+
+  <!-- PASSKEY -->
+  <div id="passkeyPanel" class="panel">
+    <div class="section">
+      <div class="card">
+        <div class="row"><span class="row-left">Domain</span><span class="row-right" id="pkDomain"></span></div>
+        <div class="row"><span class="row-left">Username</span><span class="row-right" id="pkUsername"></span></div>
+        <div class="row"><span class="row-left">Created</span><span class="row-right" id="pkCreated" style="color:var(--text2)"></span></div>
+        <div class="row"><span class="row-left">Last used</span><span class="row-right" id="pkLastUsed" style="color:var(--text2)"></span></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="card">
+        <div class="row" style="justify-content:center"><span style="font-size:14px;color:var(--text2);text-align:center;line-height:1.5">Passkeys use your device biometrics.<br>No password is stored.</span></div>
+      </div>
+    </div>
+    <div class="btn-stack">
+      <button class="btn muted" id="delPkBtn">Delete Passkey</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Settings root -->
+<div id="screen-settings" style="display:none;flex-direction:column;min-height:100dvh"></div>
+
+<!-- Settings: Security -->
+<div id="screen-settings-security" style="display:none;flex-direction:column;min-height:100dvh"></div>
+
+<!-- Settings: Devices -->
+<div id="screen-settings-devices" style="display:none;flex-direction:column;min-height:100dvh"></div>
+
+<!-- Settings: Backup & Export -->
+<div id="screen-settings-backup" style="display:none;flex-direction:column;min-height:100dvh"></div>
+
+<!-- Storage Recovery -->
+<div id="screen-storage-recovery" style="display:none;flex-direction:column;min-height:100dvh"></div>
+
+<!-- Dev badges -->
+<div class="dev-badge" id="dev-badges" style="display:none">
+  <span data-testid="auth-state"></span>
+  <span data-testid="idle-remaining"></span>
+</div>
+
+</body>
+</html>

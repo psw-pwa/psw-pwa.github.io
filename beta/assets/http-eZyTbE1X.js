@@ -1,0 +1,1 @@
+class o{routes=new Map;register(r,e){this.routes.set(r,e)}async request(r,e){const s=this.routes.get(r);if(!s)throw new Error(`MockHTTP: no handler for ${r}`);return s(e)}}export{o as MockHTTPServer};
