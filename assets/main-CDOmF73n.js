@@ -2479,7 +2479,7 @@ psw-pwa requires a passkey-capable device with the PRF extension.</div>
     </div>
 
     <div class="settings-footer">
-      <div class="version">v1.0.0</div>
+      <div class="version">v0.1.1</div>
       <button class="btn" id="settingsDeleteVaultBtn" style="color:var(--red)">Delete Vault</button>
     </div>
 
