@@ -13,26 +13,17 @@ jobs:
         with:
           token: ${{ secrets.TRAFFIC_PAT }}
 
-      - name: Fetch traffic data
-        id: traffic
+      - name: Fetch unique visitors
         run: |
-          VIEWS=$(curl -s -H "Authorization: token ${{ secrets.TRAFFIC_PAT }}" \
+          UNIQUES=$(curl -s -H "Authorization: token ${{ secrets.TRAFFIC_PAT }}" \
             https://api.github.com/repos/psw-pwa/psw-pwa.github.io/traffic/views \
-            | jq '.count')
-          CLONES=$(curl -s -H "Authorization: token ${{ secrets.TRAFFIC_PAT }}" \
-            https://api.github.com/repos/psw-pwa/psw-pwa.github.io/traffic/clones \
-            | jq '.count')
-          echo "views=$VIEWS" >> $GITHUB_OUTPUT
-          echo "clones=$CLONES" >> $GITHUB_OUTPUT
-
-      - name: Update traffic.json
-        run: |
-          echo '{"views":${{ steps.traffic.outputs.views }},"clones":${{ steps.traffic.outputs.clones }}}' > traffic.json
+            | jq '.uniques')
+          echo "{\"visitors\":$UNIQUES}" > traffic.json
 
       - name: Commit traffic.json
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add traffic.json
-          git diff --cached --quiet || git commit -m 'chore: update traffic stats'
+          git diff --cached --quiet || git commit -m 'chore: update visitor count'
           git push
